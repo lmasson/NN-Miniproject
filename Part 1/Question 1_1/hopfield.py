@@ -5,7 +5,7 @@ from pylab import *
 
 plot_dic={'cmap':cm.gray,'interpolation':'nearest'}
 
-tmax = 20
+tmax = 2
 
 class hopfield_network:
     def __init__(self,N):
@@ -50,25 +50,6 @@ class hopfield_network:
 
 
 
-    def grid(self,mu=None):
-        """
-        DEFINITION
-        reshape an array of length NxN to a matrix NxN
-
-        INPUT
-        mu: None -> reshape the test pattern x
-            an integer i < P -> reshape pattern nb i
-
-        -L.Ziegler 03.2009.
-        """
-
-        if mu is not None:
-            x_grid = reshape(self.pattern[mu],(self.N,self.N))
-        else:
-            x_grid = reshape(self.x,(self.N,self.N))
-        return x_grid
-
-
 
     def dynamic(self):
         """
@@ -80,7 +61,7 @@ class hopfield_network:
 
         # Modifications : all nodes updated sequentially instead of simultaneously
         for i in range(self.N):
-            h = sum(self.x[k]*self.weigh[i,k] for k in range(self.N) )
+            h = sum(self.x[k]*self.weight[i,k] for k in range(self.N) )
             self.x[i] = 1;
             if h < 0:
                 self.x[i] = -1;
@@ -102,6 +83,20 @@ class hopfield_network:
         return 1./self.N*sum(self.pattern[mu]*self.x)
 
 
+    def energy(self,mu):
+        """
+        DEFINITION
+        computes the energy of the test pattern with pattern nb mu
+
+        INPUT
+        mu: the index of the pattern to compare with the test pattern
+
+        -L.Masson 05.2012.
+        """
+
+        return -sum( sum(self.x[i]*self.x[j]*self.weight[i,j] for j in range(self.N)) for i in range(self.N) )
+    
+    
 
     def run(self,mu=0,flip_ratio=0):
         """
@@ -131,21 +126,17 @@ class hopfield_network:
         self.x[flip[0:idx]] *= -1
         t = [0]
         overlap = [self.overlap(mu)]
+        energy = [self.energy(mu)]
         
         # prepare the figure
         figure()
         
-        # plot the current network state
-        subplot(221)
-        g1 = imshow(self.x,**plot_dic)# we keep a handle to the image
-        axis('off')
-        title('x')
-        
-        # plot the target pattern
-        subplot(222)
-        imshow(self.x,**plot_dic)
-        axis('off')
-        title('pattern %i'%mu)
+        # plot the time course of the energy
+        subplot(211)
+        g1, = plot(t,energy,'k',lw=2) # we keep a handle to the curve
+        axis([0,tmax,-1,1])
+        xlabel('time step')
+        ylabel('energy')
         
         # plot the time course of the overlap
         subplot(212)
@@ -164,9 +155,10 @@ class hopfield_network:
             self.dynamic()
             t.append(i+1)
             overlap.append(self.overlap(mu))
+            energy.append(self.energy(mu))
             
             # update the plotted data
-            g1.set_data(self.x)
+            g1.set_data(t,energy)
             g2.set_data(t,overlap)
             
             # update the figure so that we see the changes
@@ -178,7 +170,7 @@ class hopfield_network:
                 break
             x_old = copy(self.x)
             sleep(0.5)
-        print 'pattern recovered in %i time steps with final overlap %.3f'%(i_fin,overlap[-1])
+        print 'pattern recovered in %i time steps with final overlap %.3f and energy %.3f'%(i_fin,overlap[-1],energy[-1])
 
 
 class alphabet():
