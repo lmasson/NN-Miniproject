@@ -5,7 +5,7 @@ from pylab import *
 
 plot_dic={'cmap':cm.gray,'interpolation':'nearest'}
 
-tmax = 2
+tmax = 30
 
 class hopfield_network:
     def __init__(self,N):
@@ -126,8 +126,9 @@ class hopfield_network:
         self.x[flip[0:idx]] *= -1
         t = [0]
         overlap = [self.overlap(mu)]
-        energy = [self.energy(mu)]
+        #energy = [self.energy(mu)]
         
+        """
         # prepare the figure
         figure()
         
@@ -147,6 +148,7 @@ class hopfield_network:
         
         # this forces pylab to update and show the fig.
         draw()
+        """
         x_old = copy(self.x)
         
         for i in range(tmax):
@@ -155,14 +157,16 @@ class hopfield_network:
             self.dynamic()
             t.append(i+1)
             overlap.append(self.overlap(mu))
-            energy.append(self.energy(mu))
+            #energy.append(self.energy(mu))
             
             # update the plotted data
+            """
             g1.set_data(t,energy)
             g2.set_data(t,overlap)
             
             # update the figure so that we see the changes
             draw()
+            """
 
             # check the exit condition
             i_fin = i+1
@@ -170,11 +174,13 @@ class hopfield_network:
                 break
             x_old = copy(self.x)
             
-            sleep(0.5)
+            #sleep(0.5)
         
-        # Display the plot    
-        show()
-        print 'pattern recovered in %i / %i time steps with final overlap %.3f and energy %.3f'%(i_fin,tmax,overlap[-1],energy[-1])
+    
+        # Return the normalized pixel distance
+        # print '%.3f'( 100.*(1-(overlap[-1]+1)/2) )
+        return 100.*(1-(overlap[-1]+1)/2)
+
 
 
 class alphabet():

@@ -5,7 +5,7 @@ from pylab import *
 
 plot_dic={'cmap':cm.gray,'interpolation':'nearest'}
 
-tmax = 2
+tmax = 20
 
 class hopfield_network:
     def __init__(self,N):
@@ -20,7 +20,7 @@ class hopfield_network:
         -L.Ziegler 03.2009.
         """
 
-    def make_pattern(self,P=1,ratio=0.5):
+    def make_pattern(self,P=1,ratio=0.5,letters=None):
         """
         DEFINITION
         creates and stores patterns
@@ -34,20 +34,42 @@ class hopfield_network:
         -L.Ziegler 03.2009.
         """
 
-        # Modifications : changed size of the network from N**2 to N, and nullify the diagonal of the weight matrix.
-        self.pattern = -ones((P,self.N),int)
-        idx = int(ratio*self.N)
-        for i in range(P):
-            self.pattern[i,:idx] = 1
-            self.pattern[i] = permutation(self.pattern[i])
-            
-        # Calculate new weight matrix
-        self.weight = zeros((self.N,self.N))
-        for i in range(self.N):
-            for j in range(self.N):
-                if i != j:
-                    self.weight[i,j] = 1./self.N * sum(self.pattern[k,i]*self.pattern[k,j] for k in range(self.pattern.shape[0]))
+        if letters:
+            if self.N!=10:
+                raise ValueError, 'the network size must be equal to 10'
+            alph = alphabet()
+            self.pattern = -ones((len(letters),self.N**2),int)
+            idx = 0
+            for i in letters:
+                self.pattern[idx] = alph.__dict__[i]
+                idx += 1
+        else:
+            self.pattern = -ones((P,self.N**2),int)
+            idx = int(ratio*self.N**2)
+            for i in range(P):
+                self.pattern[i,:idx] = 1
+                self.pattern[i] = permutation(self.pattern[i])
+        self.weight = zeros((self.N**2,self.N**2))
+        for i in range(self.N**2):
+            self.weight[i] = 1./self.N**2*sum(self.pattern[k,i]*self.pattern[k] for k in range(self.pattern.shape[0]))
 
+    def grid(self,mu=None):
+        """
+        DEFINITION
+        reshape an array of length NxN to a matrix NxN
+
+        INPUT
+        mu: None -> reshape the test pattern x
+            an integer i < P -> reshape pattern nb i
+
+        -L.Ziegler 03.2009.
+        """
+
+        if mu is not None:
+            x_grid = reshape(self.pattern[mu],(self.N,self.N))
+        else:
+            x_grid = reshape(self.x,(self.N,self.N))
+        return x_grid
 
     def dynamic(self):
         """
@@ -57,15 +79,8 @@ class hopfield_network:
         -L.Ziegler 03.2009.
         """
 
-        # Modifications : all nodes updated sequentially instead of simultaneously, dot() function used
-        for i in range(self.N):
-            #h = sum(self.x[k]*self.weight[i,k] for k in range(self.N) )
-            h = np.dot( self.x, self.weight[i,:] )
-            self.x[i] = 1;
-            if h < 0:
-                self.x[i] = -1;
-
-
+        h = sum(self.weight*self.x,axis=1)
+        self.x = sign(h)
 
     def overlap(self,mu):
         """
@@ -78,27 +93,9 @@ class hopfield_network:
         -L.Ziegler 03.2009.
         """
 
-        # Modifications : 1/N instead of 1/N^2, dot() function used
-        #return 1./self.N*sum(self.pattern[mu]*self.x)
-        return 1./self.N*np.dot(self.pattern[mu], self.x)
-    
+        return 1./self.N**2*sum(self.pattern[mu]*self.x)
 
-    def energy(self,mu):
-        """
-        DEFINITION
-        computes the energy of the test pattern with pattern nb mu
-
-        INPUT
-        mu: the index of the pattern to compare with the test pattern
-
-        -L.Masson 05.2012.
-        """
-
-        return -sum( sum(self.x[i]*self.x[j]*self.weight[i,j] for j in range(self.N)) for i in range(self.N) )
-    
-    
-
-    def run(self,mu=0,flip_ratio=0):
+    def run(self,mu=0,flip_ratio=0.1):
         """
         DEFINITION
         runs the dynamics and plots it in an awesome way
@@ -112,8 +109,6 @@ class hopfield_network:
         -N.Fremaux 03.2010.
         """
         
-        # Modifications : all 1/N^2 terms changed to 1/N
-        
         try:
             self.pattern[mu]
         except:
@@ -121,22 +116,26 @@ class hopfield_network:
         
         # set the initial state of the net
         self.x = copy(self.pattern[mu])
-        flip = permutation(arange(self.N))
-        idx = int(self.N*flip_ratio)
+        flip = permutation(arange(self.N**2))
+        idx = int(self.N**2*flip_ratio)
         self.x[flip[0:idx]] *= -1
         t = [0]
         overlap = [self.overlap(mu)]
-        energy = [self.energy(mu)]
         
         # prepare the figure
         figure()
         
-        # plot the time course of the energy
-        subplot(211)
-        g1, = plot(t,energy,'k',lw=2) # we keep a handle to the curve
-        axis([0,tmax,-1000,0])
-        xlabel('time step')
-        ylabel('energy')
+        # plot the current network state
+        subplot(221)
+        g1 = imshow(self.grid(),**plot_dic)# we keep a handle to the image
+        axis('off')
+        title('x')
+        
+        # plot the target pattern
+        subplot(222)
+        imshow(self.grid(mu=mu),**plot_dic)
+        axis('off')
+        title('pattern %i'%mu)
         
         # plot the time course of the overlap
         subplot(212)
@@ -155,10 +154,9 @@ class hopfield_network:
             self.dynamic()
             t.append(i+1)
             overlap.append(self.overlap(mu))
-            energy.append(self.energy(mu))
             
             # update the plotted data
-            g1.set_data(t,energy)
+            g1.set_data(self.grid())
             g2.set_data(t,overlap)
             
             # update the figure so that we see the changes
@@ -169,12 +167,8 @@ class hopfield_network:
             if sum(abs(x_old-self.x))==0:
                 break
             x_old = copy(self.x)
-            
             sleep(0.5)
-        
-        # Display the plot    
-        show()
-        print 'pattern recovered in %i / %i time steps with final overlap %.3f and energy %.3f'%(i_fin,tmax,overlap[-1],energy[-1])
+        print 'pattern recovered in %i time steps with final overlap %.3f'%(i_fin,overlap[-1])
 
 
 class alphabet():
@@ -190,3 +184,4 @@ class alphabet():
             im = Image.open('alphabet/'+i+'.gif')
             pix = array(list(im.getdata()))
             self.__dict__[i]= sign(pix-1)
+
