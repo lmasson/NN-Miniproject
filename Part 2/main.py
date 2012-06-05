@@ -4,14 +4,14 @@ import hopfield
 from pylab import *
 
 # Experiment parameters
-N = 400     # Run tests for 100, 250 and 500
+N = 250     # Run tests for 100, 250 and 500
 c = 0.1
 
 # Initialization of the Hopfield network
 network = hopfield.hopfield_network(N)
 
 # Test parameters
-maxTests = 10
+maxTests = 50
 
 # Test data
 buffer = zeros(maxTests)
@@ -35,6 +35,8 @@ for i in range(maxTests):
         # Average the retrieval error over all stored patterns
         for mu in range(P):
             avg += network.run(mu,c) / P
+        
+        # print P
             
         # If a retrieval error average is above 2, stop the simulation
         if avg > 2:
