@@ -4,15 +4,15 @@ import hopfield
 from pylab import *
 
 # Q1.3 given parameters
-N = 200
+N = 100
 c = 0.1
 
 # Initialization of the Hopfield network
 network = hopfield.hopfield_network(N)
 
 # Test parameters
-maxPatterns = 3
-maxTests = 3
+maxPatterns = 25
+maxTests = 30
 
 # Initialize plot data
 x_axis = range(maxPatterns)+ones(maxPatterns)
@@ -22,9 +22,9 @@ buffer = zeros(maxTests)
 
 # Plot initialization
 figure()
-axis([1,maxPatterns,-5,25])
-xlabel('Nb. of patterns')
-ylabel('Retrieval error [ % ]')
+axis([1,maxPatterns,-5,100])
+xlabel('Patterns')
+ylabel('Normalized pixel distance')
 
 # Run tests several numbers of patterns P
 for P in range(maxPatterns):
@@ -33,15 +33,26 @@ for P in range(maxPatterns):
     for i in range(maxTests):
         network.make_pattern(P+1)
         buffer[i] = network.run(0,c)
-        mean[P] += 1.96*buffer[i]/maxTests
+        mean[P] += buffer[i]/maxTests
         
-    # Determine error (95% confidence interval) from the buffer
+    # Determine error (confidence interval) from the buffer
     error[P] = std(buffer)/sqrt(maxTests)
     
 
 plot(x_axis, mean, 'g', lw=2)
 errorbar(x_axis, mean, yerr=error, fmt='ro')
 
+Pmax = 1
+
+# Find Pmax
+for P in range(maxPatterns):
+    if mean[P] < 2:
+        Pmax = P+1
+
+# Calculate capacity
+alpha_max = 1.*Pmax / N
+
+print 'Pmax = %d | alpha_max = %f'%(Pmax, alpha_max)
 
 
 show()
